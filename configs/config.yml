@@ -1,29 +1,9 @@
 nodes:
   - 
-    ip: 140.133.76.213
+    ip: 192.168.1.2
     port: 6666
-    name: pve1
+    name: node1
   - 
-    ip: 140.133.76.229
+    ip: 192.168.1.3
     port: 6666
-    name: pve2
-  - 
-    ip: 140.133.76.212
-    port: 6666
-    name: pve3
-  - 
-    ip: 140.133.76.100
-    port: 6666
-    name: netfpga
-  - 
-    ip: 140.133.76.101
-    port: 6666
-    name: pve_c002
-  -
-    ip: 140.110.111.19
-    port: 6666
-    name: NCHC_TWISC
-  -
-    ip: 140.116.164.188
-    port: 6666
-    name: NCKU
+    name: node2
