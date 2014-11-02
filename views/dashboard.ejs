@@ -1,0 +1,105 @@
+<script>
+	$(document).ready(function() {
+		$('.nav li').click(function() {
+			$('.nav li.active').removeClass('active');
+			$(this).addClass('active');
+		});
+	});
+</script>
+<div class="row">
+  <div class="span3">
+  	<div class="well" style="padding: 8px 0;">
+  		<ul class="nav nav-list">
+  			<li class="nav-header">view type</li>
+  			<li><a href="#"><i class="icon-folder-open"></i>IDC</a></li>
+  			<li class="active"><a href="#"><i class="icon-folder-open"></i>Virtual Network</a></li>
+  			<li><a href="#"><i class="icon-folder-open"></i>Resource</a></li>
+  		</ul>
+  	</div>
+  	<div class="well" style="padding: 8px 0;">
+  		
+		  <ul class="nav nav-list">
+		  	<li class="nav-header">IDC</li>
+			  <li>
+			    <a href="#">
+			      <i class="icon-home"></i>
+			      KUAS
+			    </a>
+			    <ul class="nav nav-list">
+			    	<li><a href="#"><i class="icon-hdd"></i>KUAS-node1</a></li>
+			    	<li><a href="#"><i class="icon-hdd"></i>KUAS-node2</a></li>
+			    	<li><a href="#"><i class="icon-hdd"></i>KUAS-node3</a></li>
+			    </ul>
+			  </li>
+			  <li>
+			    <a href="#">
+			      <i class="icon-home"></i>
+			      NCKU
+			    </a>
+			    <ul class="nav nav-list">
+			    	<li><a href="#"><i class="icon-hdd"></i>NCKU-node</a></li>
+			    </ul>
+			  </li>
+			  <li>
+			    <a href="#">
+			      <i class="icon-home"></i>
+			      NCU
+			    </a>
+			    <ul class="nav nav-list">
+			    	<li><a href="#"><i class="icon-hdd"></i>NCU-node</a></li>
+			    </ul>
+			  </li>
+			  </li>
+			</ul>	
+	  </div>
+  </div>
+  
+  <div class="span9">
+  	<div class="well" style="padding: 8px 0;">
+  		<table class="table table-striped table-bordered table-condensed" style="margin:10px 20px;width:80%">
+  			<caption>Summary</caption>
+  			<tbody>
+  				<tr>
+  					<th>Uptime</th>
+  					<td>6 days 02:48:12</td>
+  				</tr>
+  				<tr>
+  					<th>Load average</th>
+  					<td>0.36, 0.53, 0.49</td>
+  				</tr>
+  				<tr>
+  					<th>CPUs</th>
+  					<td>8 x Intel(R) Xeon(R) CPU E5420 @ 2.50GHZ</td>
+  				</tr>
+  				<tr>
+  					<th>CPU usage</th>
+  					<td>5.85%</td>
+  				</tr>
+  				<tr>
+  					<th>IO delay</th>
+  					<td>
+  						0.12%
+  					</td>
+  				</tr>
+  				<tr>
+  					<th>RAM usage</th>
+  					<td>
+  						Total: 3.86GB<br />
+  						Used: 1.40GB
+  					</td>
+  				</tr>
+  				<tr>
+  					<th>HD space</th>
+  					<td>
+  						Total: 33.22GB<br />
+  						Used: 4.99GB
+  					</td>
+  				</tr>
+  			</tbody>
+  			
+  		</table>
+  	</div>
+  	<!--<div class="well" style="padding: 8px 0;height:400px;">
+  	</div>-->
+  </div>
+</div>

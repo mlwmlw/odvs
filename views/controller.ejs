@@ -1,0 +1,89 @@
+<script>
+	$(document).ready(function() {
+		$(':button.create').click(function() {
+			create();
+		});
+		/*$(':button.delete').click(function() {
+			remove($())
+		});*/
+	});
+	function create() {	
+			$.ajax({
+				url: '/api/controller',			
+				type: 'post',
+				data: $('form').serialize(),
+				dataType: 'json',
+			}).done(function(res) {
+				if(res.status)
+					refresh();
+			});
+	}
+	function remove(name) {
+		checkModal('Delete Controller', function(bool) {
+			if(!bool)
+				return;
+			$.ajax({
+				url: '/api/controller',
+				type: 'delete',
+				dataType: 'json',
+				data: {name: name}
+			}).done(function(res) {				
+				if(res.status)
+					refresh();
+			});
+		});
+	}
+</script>
+<style>
+	table.table td, table.table th {
+		text-align:center;
+	}
+		table.table  ul {
+		text-align:left;
+	}
+</style>
+<div class="row">
+	<div class="span12">
+		<table class="table table-condensed">
+			<thead>
+				<tr>
+					<th>Name</th>
+					<th>Port</th>
+					<th>Forwarding table</th>
+					<th>action</th>
+				</tr>
+			</thead>
+			<? for(var i in servers) {?>
+				<tr>
+					<td><?= servers[i].name ?></td>
+					<td><?= servers[i].port ?></td>
+					<td style="width:30%;">
+						<ul>							
+							<? for(var dpid in servers[i].table) { ?>
+								<li>
+									<?= dpid ?>
+									<ul>
+										<? for(var mac in servers[i].table[dpid]) { ?>
+											<li><?= mac ?> - <?= servers[i].table[dpid][mac] ?></li>											
+										<? } ?>
+									</ul>
+								</li>
+							<? } ?>							
+						</ul>
+					</td>
+					<td>
+						<a class="btn btn-danger delete" href="javascript:void(0)" onclick="remove('<?= servers[i].name ?>')"><i class="icon-trash icon-white"></i> Delete</a>
+					</td>
+				</tr>
+			<? } ?>
+		</table>
+	</div>
+	<div class="span12">
+		<form class="well form-inline" method="POST" >
+			<input type="text" name="name" class="input-medium" placeholder="Name" value="learning-switch">
+			<input type="text" name="port" class="input-medium" placeholder="Port" value="7000">
+  		<button type="button" class="btn create">Create Server</button>
+  	</form>
+	</div>
+</div>
+<?- partial('modal') ?>

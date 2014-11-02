@@ -1,0 +1,188 @@
+<script>
+	$(document).ready(function() {
+		$('.showadd').click(function() {
+			$('#addModal').modal('show');
+		});
+		
+		$('.controller').change(function() {
+
+			var params = $(this).val().split(',');
+			$.ajax({
+				url: '/api/br',
+				type: 'put',
+				dataType: 'json',
+				data: {host: params[0], name: params[1], controller: params[2]}
+			}).done(function(res) {
+				if(res.status) {
+					refresh();
+				}
+				else {
+					alert(res.message);
+				}
+			});
+		});
+		//$('.container').addClass('container-fluid');//.removeClass('container');
+	});
+	function show_vport(name) {
+		$('.showonly').addClass('hide');
+		
+		$('.br_' + name).removeClass('hide');
+	}
+	function show_flows(host, name) {
+		$.ajax({
+			url: '/api/flows/' + host + '/' + name,
+			type: 'get',
+			dataType: 'json',
+		}).done(function(res) {
+			if(res.status) {
+				var flows = res.message;
+				$('.showonly').addClass('hide');
+				$('.flows tbody tr').remove();
+				$('.flows h2').text(name + ' Flows');
+				for(var i in flows) {
+					var flow = flows[i];
+					var rules = '';
+					for(var j in flow.rules) {
+						rules += '<li>' + j + ' = ' + flow.rules[j] + '</li>';
+					}
+					$('.flows tbody').append("<tr><td><ul>" + rules + "</ul></td><td>" + flow.actions.join(",") + '</td><td><a class="btn btn-danger" href=""><i class="icon-trash icon-white"></i> Delete</a></td></tr>');
+				}
+				$('.flows').removeClass('hide');
+				
+			}
+		});
+	}
+</script>
+<style>
+	table.table td, table.table th {
+		text-align:center;
+	}
+
+</style>
+<div class="container-fluid">
+	<div class="row-fluid">
+		<h1>Openflow Switch Info</h1>	
+		<div class="span5">
+			<? for(var hostname in brs) { ?>
+				<h2><?= hostname ?> - <?= host[hostname] ?></h2>
+				<table class="table table-condensed">
+				  <thead>
+				    <tr>		    
+				    	<th>vSwitch Name</th>
+				      <!--<th>Port Name</th>-->
+				      <th>controller</th>
+				      <th>action</th>
+				    </tr>
+				  </thead>
+				  <tbody>
+			  		<? for(var br_name in brs[hostname]) { ?>		
+					    <tr>
+					      <td><?= br_name ?></td>
+					      <!--<td><?= brs[hostname][br_name].controller ?></td>-->
+					      <td>
+						      <div class="controls">
+			              <select class="controller">
+			              	<option value="<?= host[hostname] ?>,<?= br_name ?>,">None</option>
+			              	<? for(var i in controllers) { ?>
+			                	<option value="<?= host[hostname] ?>,<?= br_name ?>,tcp:<?=HOSTIP?>:<?=controllers[i].port?>" <?= (brs[hostname][br_name].controller.port == controllers[i].port) ? "selected='selected'" :"" ?>><?=controllers[i].name?></option>
+			                <? }?>
+			              </select>
+			            </div>
+		        		</td>
+					      <td>   	
+					      	<!--<a class="btn btn-info" href="javascript:show_vport('<?= hostname ?>_<?= br_name ?>')"><i class="icon-fullscreen icon-white"></i> vPort</a>-->
+					      	<? if(!(brs[hostname][br_name].controller.port > 6634)) {?>
+					      	<a class="btn btn-info" href="javascript:show_flows('<?= host[hostname] ?>','<?= br_name ?>')"><i class="icon-share-alt icon-white"></i> Flows</a>
+					      	<? } ?>
+					      </td>
+					    </tr>
+				    <? } ?>		    
+				  </tbody>
+				</table>
+			<? } ?>
+		</div>
+	  <div class="span5">
+	  	<? for(var hostname in brs) { ?>
+	   		<? for(var br_name in brs[hostname]) { ?>
+					<table class="table table-condensed hide showonly br br_<?= hostname ?>_<?= br_name ?>">
+						<caption>
+							<h2><?= br_name ?></h2>
+						</caption>
+						<thead>
+							<tr>
+								<th>Port number</th>
+								<th>Port name</th>
+								<th>Port type</th>
+								<th>Action</th>
+							</tr>
+						</thead>
+						<tbody>
+							<? for(var port in ports[hostname][br_name]) { ?>
+							<tr>
+								<td><?= ports[hostname][br_name][port].ofport ?></td>
+							 	<td><?= ports[hostname][br_name][port].name ?></td>
+							 	<td><?= ports[hostname][br_name][port].type ?></td>
+							 	<td>
+							 	</td>
+							</tr>
+							<? } ?>
+						</tbody>
+						
+					</table>
+				<? } ?>
+			<? } ?>
+	  </div>
+	  <div class="span5">
+	  	<table class="table table-condensed hide showonly flows">
+	  		<caption><h2>Flows</h2></caption>
+	  		<thead>
+					<tr>
+						<th>Rules</th>
+						<th>Actions</th>
+						<th>action</th>
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+				<tfoot>
+					<tr>
+						<td colspan="3" style="text-align:right">
+							
+						</td>
+					</tr>
+				</tfoot>
+			</table>
+					
+	  </div>
+	</div>
+</div>
+
+<?- partial('modal') ?>
+<div class="modal hide" id="addModal">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal">กั</button>
+    <h3>add vSwitch</h3>
+  </div>
+  <div class="modal-body">
+    <form class="well">
+    	<div class="control-group">
+        <label class="control-label">Host</label>
+        <div class="controls">
+          <select name="host">
+          	<? for(var hostname in host) { ?>
+            	<option value="<?= host[hostname] ?>"><?= hostname ?></option>
+            <? } ?>
+          </select>
+        </div>
+      </div>
+      <div class="control-group">
+	    	<label class="control-label">Name</label>
+			  <input type="text" name="name" class="input" placeholder="vSwitch name">
+		  </div>
+		</form>
+  </div>
+  <div class="modal-footer">
+    <a href="javascript:void(0)" class="btn" data-dismiss="modal">Cencel</a>
+    <a href="javascript:void(0)" class="btn btn-primary addbr">Add</a>
+  </div>
+</div>

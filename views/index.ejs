@@ -1,0 +1,151 @@
+<!-- Main hero unit for a primary marketing message or call to action -->
+<script>
+var paper = null;
+var states = [];
+var joints = [];
+$(document).ready(function() {
+
+	var arrow = {
+			startArrow: {type: "basic", size: 5},
+			endArrow: {type: "basic", size: 5},
+			attrs: {"stroke-dasharray": "none"},
+			label: 'gre'
+	};
+
+	//Joint.dia.stringify()
+	var fsa = Joint.dia.fsa;
+	$('#hero').css('padding', '10px 60px');
+	$('#hero').css('background-color', '#fff');
+	$('#hero').css('border', '1px solid #ddd');
+
+	var offset = 30;
+	var vswitchs = {};
+	var vports = [];
+	var dot = <%- JSON.stringify(dot) %>
+	var tunnels = <%- JSON.stringify(tunnels) %>
+	var hosts = <%- JSON.stringify(hosts) %>
+	var server = <%- JSON.stringify(server) %>
+
+	paper = Joint.paper("hero", <%= dot.width %>, <%= dot.height %>+offset);
+	for(var ip in dot.nodes) {
+
+		vswitchs[ip] = {};
+		for(var br in dot.nodes[ip]) {
+			var s = ovs.vswitch.create({
+				rect: {x: dot.nodes[ip][br].x, y: dot.nodes[ip][br].y + offset/2},
+				label: ip+':'+br
+			});
+			vswitchs[ip][br] = s;
+			vports.concat(s.getPorts());
+		}
+	} 
+
+	for(var i=0;i<hosts.length;i++) {
+		for(var j=0;j<hosts[i].length;j++) {
+			for(var k=0;k<hosts[i][j].ports.length;k++) {
+				var _ports = vswitchs[server[i]][hosts[i][j].name].getPorts();
+				_ports[k].setName(hosts[i][j].ports[k].port.name);
+				console.log(_ports)
+			}
+		}
+	}
+	for(var i in tunnels) {
+		var from = tunnels[i][0];
+		var to = tunnels[i][1];
+//		var key = tunnels[i];
+		var fp = vswitchs[from.ip][from.br].findPort(from.port);
+		var tp = vswitchs[to.ip][to.br].findPort(to.port);
+		var j = fp.joint(tp, arrow).register(vports);
+		fp.setPortStatus('up');
+		tp.setPortStatus('up');
+		joints.push(j);
+	}
+/*
+	line.registerCallback("disconnected", function(side) {
+   		 console.log(side + " disconnected.");
+	});
+	//線段變形
+
+	line.registerCallback("justBroken", function(pos) {
+   	 console.log("justBroken." + pos);
+	});
+
+	line.registerCallback("draggingEnd", function(side) {
+   	 console.log("drag end -" + side);
+	})
+	line.registerCallback("draggingStart", function(side) {
+   	 console.log("drag start -" + side);
+	})
+		//console.log(j.compact());
+		j.registerCallback("justConnected", function(side) {
+  		if (side === "start"){
+   		 console.log("Start cap connected.");
+  		} else {  // side === "end"
+   		 console.log("End cap connected");
+  		}
+		});
+*/
+	/*var s0 = fsa.StartState.create({
+		position: {x: 20, y: 20}
+	});
+
+	var all = [s0, se, s1, s2, s3, s4, s5, s6];
+
+	s0.joint(s1, fsa.arrow).register(all);
+//	s1.joint(s2, (fsa.arrow.label = "a", fsa.arrow)).register(all);
+
+	//s6.joint(s2, (fsa.arrow.label = "h", fsa.arrow)).register(all);
+	//fsa.arrow.label = null;// empty label
+*/
+});
+//arrow.isStartDummy() 
+</script>
+<div class="hero-unit" id="hero">
+
+</div>
+<div class="row">
+	<div class="span12">
+		<h2>vSwitch Status</h2>
+		<p>	      
+			<ul> 
+				<% for(var i=0; i< hosts.length; i++) {%>
+					<li>
+						<strong>server <%= server[i] %></strong>
+						<ul>
+						<% for(var j=0; j< hosts[i].length; j++) {%>
+							<li>
+								<strong>vSwitch name:</strong> <%= hosts[i][j].name %>
+								<br />
+								<ul>
+								<% for(var k=0; k< hosts[i][j].ports.length; k++) {%>
+									<% p = hosts[i][j].ports[k] %>
+									<li>
+										<strong>port id:</strong> <%= p.port._uuid %>,<br />
+										<strong>interface id:</strong> <%= p.iface._uuid %>,<br />
+
+										<strong>port name:</strong> <%= p.port.name %>,
+										<strong>port type:</strong> 
+										<% if(hosts[i][j].ports[k].iface.type) { %>
+											<%= p.iface.type %>
+										<% } else {%>
+											system
+										<% } %>
+				
+										<% if(p.iface.type == 'gre') { %>
+											<strong>remote ip:</strong><%= p.iface.options.remote_ip %>
+										<% } %>
+									</li>
+								<% } %>
+								</ul>
+							</li>
+						<% } %>
+						</ul>
+					</li>
+				<% } %>
+			</ul>
+		</p>      
+	</div>
+</div>
+
+            
+      

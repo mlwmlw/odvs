@@ -1,0 +1,84 @@
+<style>
+	table.table td, table.table th {
+		text-align:center;
+	}
+
+</style>
+<div class="row">
+<? if(typeof(brs) != 'undefined') { ?>
+	<div class="span12">
+		<h2>NetFlow Collector</h2>
+		<table class="table table-condensed">
+		  <thead>
+		    <tr>		    
+		    	<th>Host</th>
+		    	<th>vSwitch Name</th>
+		      <th>Size</th>
+		      <th>Packets</th>
+		      <th>Status</th>
+		      <th>Actions</th>
+		    </tr>
+		  </thead>
+		  <tbody>
+				<? if(brs.length) {?>
+		  		<? for(var i in brs) { ?>		
+		  			<? br = brs[i]?>
+				    <tr>
+				    	<td><?= br.host ?></td>
+				      <td><?= br.name ?></td>
+				      <td>
+				      	<? if(br.size > 1024*1024) {?>
+				      		<?= Math.round(br.size/(1024*1024)) ?> MBytes
+				      	<? } else {?>
+				      		<?= Math.round(br.size/1024) ?> KBytes
+				      	<? }?>
+				      </td>
+				      <td><?= br.packets ?></td>
+				      <td><?= br.netflow ? 'Collecting': 'Disable' ?></td>
+				      <td>
+				      	<a class="btn" href="/collector/<?=br.id?>"><i class="icon-th-list"></i> Detail </a>	
+				      	<a class="btn btn-danger" href="/collector/delete/<?=br.id?>"><i class="icon-trash icon-white"></i> Reset </a>	
+				      </td>
+				    </tr>
+			    <? } ?>
+			  <? } else {?>
+			  	<tr><td colspan="6">no data</td></tr>
+			  <? } ?>
+		  </tbody>
+		</table>
+	</div>
+<? } ?>
+<? if(typeof(records) != 'undefined') {?>
+	<div class="span12">
+		<h2>NetFlow Collector <?=br.name?></h2>
+		<table class="table table-condensed">
+		  <thead>
+		    <tr>		    
+		    	<th>In Port</th>
+		    	<th>Out Port</th>
+		    	<th>SRC</th>
+		    	<th>DST</th>
+		    	<th>Size</th>
+		    	<th>Packets</th>
+		    	<th>Time</th>
+		    </tr>
+		  </thead>
+		  <tbody>
+				
+		  		<? for(var i in records) { ?>		
+		  			<? record = records[i]?>
+				    <tr>
+				    	<td><?= record.input_name ?>(<?= record.input ?>)</td>
+				    	<td><?= record.output_name ?>(<?= record.output ?>)</td>
+				    	<td><?= record.src_ip ?>:<?= record.src_port ?></td>
+				    	<td><?= record.dst_ip ?>:<?= record.dst_port ?></td>				    	
+				    	<td><?= record.size ?></td>
+				    	<td><?= record.packets ?></td>
+				    	<td><?= record.time_format ?></td>
+				    </tr>
+			    <? } ?>
+		  </tbody>
+		</table>
+	</div>
+<? } ?>
+</div>

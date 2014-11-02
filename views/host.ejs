@@ -1,0 +1,235 @@
+<script>
+	$(document).ready(function() {
+		$('.showadd').click(function() {
+			$('#addModal').modal('show');
+		});
+		$('.btn.addbr').click(function() {
+			var done = true;
+			$('#addModal input').each(function() {				
+				if($(this).val() != '') {
+					return;
+				}
+				$(this).parents('div.control-group').addClass('error');
+				$(this).focus();
+				done = false;
+			});
+			if(done) {
+				$.ajax({
+					url: '/api/br',			
+					type: 'post',
+					dataType: 'json',
+					data: $('#addModal form').serialize()				
+				}).done(function(res) {
+					if(res.status) {
+						refresh();
+					}
+					else {
+						alert(res.message);
+					}
+				});
+			}
+		});
+	
+	});
+	function show_vport(name) {
+		$('.br').addClass('hide');
+		
+		$('.br_' + name).removeClass('hide');
+	}
+	
+	function remove_br(host, name) {
+		checkModal('Delete vSwitch', function(bool) {
+			if(!bool)
+				return;
+			$.ajax({
+				url: '/api/br',			
+				type: 'delete',
+				dataType: 'json',
+				data: {host:host, name: name}				
+			}).done(function(res) {
+				if(res.status) {
+					refresh();
+				}
+				else {
+					alert(res.message);
+				}
+			});
+		});
+	}
+	function remove_port(host, name, btn) {
+		checkModal('Delete vPort ' + name, function() {
+			$.ajax({
+				url: '/api/port',			
+				type: 'delete',
+				dataType: 'json',
+				data: {host:host, iface: name}
+			}).done(function(res) {
+				if(res.status) {
+					$(btn).parents('tr').remove();
+				}
+				else {
+					alert(res.message);
+				}
+			});
+		});
+	}
+	function set_collector(host, name, btn) {
+		var $btn = $(btn);
+		var on = $btn.hasClass('btn-success') ? 1: 0;
+		$.ajax({
+				url: '/api/collector',			
+				type: on ? 'delete': 'post',
+				dataType: 'json',
+				data: {host:host, name: name}
+			}).done(function(res) {
+				if(res.status) {
+					if(on) {
+						$btn.find('i').removeClass('icon-white');
+						$btn.removeClass('btn-success');
+					}
+					else {
+						$btn.find('i').addClass('icon-white');
+						$btn.addClass('btn-success');
+					}
+				}
+				else {
+					alert(res.message);
+				}
+			});
+		
+	}
+</script>
+<style>
+	table.table td, table.table th {
+		text-align:center;
+	}
+	
+</style>
+<h1>vSwitch Info</h1>
+<? for(var hostname in brs) { ?>
+
+<div class="row">
+	<div class="span6">
+		<h2><?= hostname ?> - <?= host[hostname] ?></h2>
+		<table class="table table-condensed">
+		  <thead>
+		    <tr>		    
+		    	<th>vSwitch Name</th>
+		      <!--<th>Port Name</th>-->
+		      <th>action</th>
+		    </tr>
+		  </thead>
+		  <tbody>
+
+		  		<? for(var br_name in brs[hostname]) { ?>		
+				    <tr>
+				      <td><?= br_name ?></td>
+				      <td>   	
+				      	<a class="btn btn-info" href="javascript:show_vport('<?= hostname ?>_<?= br_name ?>')"><i class="icon-fullscreen icon-white"></i> vPort</a>				      	
+				      	<a class="btn <?= brs[hostname][br_name].netflow ? 'btn-success': '' ?>" href="javascript:void(0)" onclick="set_collector('<?= host[hostname] ?>','<?= br_name ?>', this)"><i class="icon-eye-open <?= brs[hostname][br_name].netflow ? 'icon-white': '' ?>"></i> netflow </a>
+				      	<a class="btn btn-danger" href="javascript:remove_br('<?= host[hostname] ?>', '<?= br_name ?>')"><i class="icon-trash icon-white"></i> Delete</a>
+				      </td>
+				    </tr>
+			    <? } ?>		    
+		  </tbody>
+		</table>
+	</div>
+	<div class="span6 ports">
+		<? for(var br_name in brs[hostname]) { ?>
+			<table class="table table-condensed hide br br_<?= hostname ?>_<?= br_name ?>">
+				<caption>
+					<h2><?= br_name ?></h2>
+				</caption>
+				<thead>
+					<tr>
+						<th>Port number</th>
+						<th>Port name</th>
+						<th>Port type</th>
+						<th>statistics packets</th>
+						<th>statistics bytes</th>
+						<th>Action</th>
+					</tr>
+				</thead>
+				<tbody>
+					<?
+						function format(size) {
+							if(size > 1024*1024*1024) {
+								return Math.round(size/(1024*1024*1024)) + " G";
+							}
+							else if(size > 1024*1024) {
+								return Math.round(size/(1024*1024)) + " M";
+							}
+							else {
+								return Math.round(size/1024) + " K";
+							}
+						}
+					?>
+					<? for(var i in ports[hostname][br_name]) { ?>
+					<? var port = ports[hostname][br_name][i] ?>
+					<tr>
+						<td><?= port.ofport ?></td>
+					 	<td><?= port.name ?></td>
+					 	<td><?= port.type ?></td>
+					 	<td>
+					 		<ul>
+						 		<li>rx : <?= format(port.statistics.rx_packets) ?></li>
+						 		<li>tx : <?= format(port.statistics.tx_packets) ?></li>
+						 	</ul>
+						 </td>
+						 <td>
+						 	<ul>
+						 		<li>rx : <?= format(port.statistics.rx_bytes) ?>B</li>
+						 		<li>tx  : <?= format(port.statistics.tx_bytes) ?>B</li>
+						 	</ul>
+					 	</td>
+					 	<td>
+							<? if(port.type != 'internal') { ?>
+					 		<a class="btn btn-danger" href="javascript:void(0)" onclick="remove_port('<?= host[hostname] ?>', '<?= port.name ?>', this)">
+					 			<i class="icon-ban-circle icon-white"></i> detach
+					 		</a>	
+					 		<? } ?>
+					 	</td>					 	
+					</tr>
+					<? } ?>
+				</tbody>
+				
+			</table>
+		<? } ?>
+	</div>
+</div>
+<? } ?>
+<div class="row">
+	<div class="span12" style="text-align:right;">
+		<a class="btn btn-primary showadd" href="javascript:void(0)"><i class="icon-plus icon-white"></i> Add vSwitch</a>
+	</div>
+</div>
+
+<?- partial('modal') ?>
+<div class="modal hide" id="addModal">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal">×</button>
+    <h3>add vSwitch</h3>
+  </div>
+  <div class="modal-body">
+    <form class="well">
+    	<div class="control-group">
+        <label class="control-label">Host</label>
+        <div class="controls">
+          <select name="host">
+          	<? for(var hostname in host) { ?>
+            	<option value="<?= host[hostname] ?>"><?= hostname ?></option>
+            <? } ?>
+          </select>
+        </div>
+      </div>
+      <div class="control-group">
+	    	<label class="control-label">Name</label>
+			  <input type="text" name="name" class="input" placeholder="vSwitch name">
+		  </div>
+		</form>
+  </div>
+  <div class="modal-footer">
+    <a href="javascript:void(0)" class="btn" data-dismiss="modal">Cencel</a>
+    <a href="javascript:void(0)" class="btn btn-primary addbr">Add</a>
+  </div>
+</div>

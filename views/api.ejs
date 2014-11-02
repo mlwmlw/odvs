@@ -1,0 +1,96 @@
+<script>
+	$(document).ready(function() {
+		$(".api a").click(function() {
+			var method = $(this).text().split(" ")[0];
+			var url = $(this).text().split(" ")[1];
+			$("form input, form select").each(function() {
+				//console.log(':' + $(this).attr('name'), $(this).val());
+				url = url.replace(':' + $(this).attr('name'), $(this).val());
+			});
+			$.ajax({
+				url: url, 
+				type: method, 
+				data: method != 'GET' ? $('form').serialize() : '',
+				dataType: 'json'
+			}).done(function(res) {
+				$('.result').html(syntaxHighlight(res));
+			});
+		});
+	});
+	function syntaxHighlight(json) {
+    if (typeof json != 'string') {
+			json = JSON.stringify(json, undefined, 2);
+    }
+    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        var cls = 'number';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+                cls = 'key';
+            } else {
+                cls = 'string';
+            }
+        } else if (/true|false/.test(match)) {
+            cls = 'boolean';
+        } else if (/null/.test(match)) {
+            cls = 'null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+    });
+}
+</script>
+
+<div class="row">
+	<div class="span4">
+			<form class="well" method="POST" >
+				host: 
+				<select name="host">
+				<? for(var i in hosts) { ?>
+      		<option value="<?= hosts[i].ip ?>"><?= hosts[i].name ?></option>
+      	<? } ?>
+      	</select>
+      	<br />
+				<!--<input type="text" name="host" class="input-medium" placeholder="Host" value="140.133.76.213"><br />-->
+				name: 
+				<input type="text" name="name" class="input-medium" placeholder="name" value="test"><br />
+				iface: 
+				<input type="text" name="iface" class="input-medium" placeholder="iface" value="test"><br />
+				bridge: 
+				<input type="text" name="br" class="input-medium" placeholder="br" value="test"><br />
+				hosts:
+				<input type="text" name="hosts" class="input-medium" placeholder="hosts" value="140.133.76.100,140.133.76.213"><br />
+	  	</form>
+
+		<ul class="api">
+			<li> BRIDGE 
+				<ul>	
+					<li>list-bridge <a href="#">GET /api/br/:host</a></li>
+					<li>add-bridge <a href="#">POST /api/br/ {host, name}</a></li>
+					<li>delete-bridge <a href="#">DELETE /api/br/ {host, name}</a></li>
+				</ul>
+			</li>			
+			<li> PORT 
+				<ul>	
+					<li>add-port <a href="#">POST /api/port/ {host, br, iface}</a></li>
+					<li>delete-port <a href="#">DELETE /api/port/ {host, [br], iface}</a></li>
+				</ul>
+			</li>
+			
+			<li> NETWORK
+				<ul>
+					<li>list-network <a href="#">GET /api/network</a></li>
+					<li>add-network <a href="#">POST /api/network {name, hosts}</a></li>
+					<li>delete-network <a href="#">DELETE /api/network {name}</a></li>
+				</ul>
+			</li>
+			<li> TUNNEL
+				<ul>
+					<li>add-tunnel</li>
+				</ul>
+			</li>
+		</ul>
+	</div>
+	<div class="span8">
+		<pre class="result">click left pane link</pre>
+	</div>
+</div>

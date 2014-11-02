@@ -1,0 +1,214 @@
+//var p = require('rpc-socket/lib/protocols/process')
+//var ovsdb = require('../libs/ovsdb-client');
+var Step = require('step');
+var fs = require('fs');
+require('js-yaml');
+var sqlite3 = require('sqlite3').verbose();
+
+var ovsctl = require('../models/ovsdb').ovsctl;
+//[/*'140.133.76.19',*/ '140.133.76.227', '140.110.111.19', '140.133.76.100', '140.116.164.180'];
+var configs = require('../configs/config.yml').pop();
+var server = configs.nodes;
+
+var rpc_pool = {};
+
+function ovsconn() {
+	for(var i = 0; i < server.length; i++) {
+		var rpc = ovsdb.connect(OVSPORT, server[i]);
+		rpc.request('get-schema', ['Open_vSwitch', 'Bridge'], (function(i) {
+			return function(ovsres) {
+				addConn(i, ovsres);
+			}
+		})(i));
+		function addConn(i, schema) {
+			var conn = {};
+			conn.ip = server[i];
+			conn.rpc = rpc;
+			conn.schema = schema;
+			rpc_pool[server[i]] = conn;
+		}
+	}
+}
+module.exports = function(app) {
+
+
+	app.get('/', function(req, res) {
+		var result = {};
+		Step(function getBridges() {
+			//get vSwitch Bridges
+			var group = this.group();
+			for(var i = 0; i < server.length; i++) { 
+				var ovs = new ovsctl(server[i]);
+				ovs.list('Bridge tunnel', group());
+			}
+		}, function getPorts(error, hosts) {
+			//get bridges ports
+			result.hosts = hosts;
+			var group = this.group();
+			for(var i=0; i < hosts.length; i++) {
+				var ovs = new ovsctl(server[i]);
+				for(var j=0; j < hosts[i].length; j++) {
+					for(var k=0; k < hosts[i][j].ports.length; k++) {
+						ovs.get('Port', [hosts[i][j].ports[k][1]], group());
+					}
+				}
+			}
+		}, function getIface(error, ports) {
+			//get port interface
+			var _ports = {};
+			for(var i=0; i < ports.length; i++) {
+				_ports[ports[i]._uuid] = ports[i];
+			}
+			result.ports = _ports;
+			var hosts = result.hosts;
+			var group = this.group();
+			for(var i=0; i < hosts.length; i++) {
+				var ovs = new ovsctl(server[i]);
+				for(var j=0; j < hosts[i].length; j++) {
+					for(var k=0; k < hosts[i][j].ports.length; k++) {
+						ovs.get('Interface', [_ports[hosts[i][j].ports[k][1]].interfaces], group());
+					}
+				}
+			}
+		}, function arrange_port_iface(error, ifaces) {
+			//arrange port and interface 
+			var _ifaces = {};
+			for(var i=0; i < ifaces.length; i++) {
+				_ifaces[ifaces[i]._uuid] = ifaces[i];
+				//map options
+				var options = {};
+				if(ifaces[i].options) {
+					for(var j=0;j<ifaces[i].options.length;j++) {
+						options[ifaces[i].options[j][0]] = ifaces[i].options[j][1];
+					}
+					ifaces[i].options = options;
+				}
+			}
+			result.ifaces = _ifaces;
+			var ports = result.ports;
+			var ifaces = result.ifaces;
+			var hosts = result.hosts;
+			for(var i=0; i < hosts.length; i++) {
+				for(var j=0; j < hosts[i].length; j++) {
+					for(var k=0; k < hosts[i][j].ports.length; k++) {
+						var uuid = hosts[i][j].ports[k][1];
+						var port = {};
+						ports[uuid].server = server[i];
+						ports[uuid].br = hosts[i][j].name;
+						port.port = ports[uuid];
+						ifaces[ports[uuid].interfaces].port = ports[uuid];
+						port.iface = ifaces[ports[uuid].interfaces];
+						hosts[i][j].ports[k] = port;
+						console.log(port.iface)
+					}
+				}
+			}
+			this();
+		}, function find_tunnel() {
+			var ifaces = result.ifaces;
+			var tunman = new Tunman();
+			for(var i in ifaces) {
+				if(ifaces[i].type == 'gre' || ifaces[i].type == 'capwap' || ifaces[i].type =='ipsec_gre') {
+					var key = ifaces[i].options.key ? ifaces[i].options.key : false;
+					tunman.addWay(ifaces[i].port.server, ifaces[i].options.remote_ip, {from: ifaces[i].port.br, port: ifaces[i].port.name, key: key});
+				console.log(ifaces[i].port)
+				}
+			}
+			result.tunnels = tunman.getTunnels();
+			this();
+		},
+		function setup_graphviz() {
+			//setup graphviz
+			var self = this;
+			var hosts = result.hosts;
+			graphviz = require('node-graphviz');
+			var g = graphviz.digraph("G");
+			g.setNodeAttribut('width', '5');
+			g.setNodeAttribut('height', '1.2');
+			for(var i=0; i < hosts.length; i++) {
+				var cluster = g.addCluster('"cluster_' + server[i] + '"');
+				for(var j=0; j < hosts[i].length; j++) {
+					cluster.addNode(server[i] + '-' + hosts[i][j].name);
+				}
+			}
+			//for(var i in server) {
+				//g.addNode(server[i]);
+			//}
+			g.setGraphVizPath( "/usr/bin");
+			//console.log(g.to_dot());
+			g.output({use:'fdp', type: 'dot'}, function(res) {
+				var str = res.toString('utf8');
+				var dot = {nodes: {}};
+				var coord = str.match(/graph \[.+?=\"(.+?)"\]/)[1].split(",");
+				//var nodes = str.match(/pos=\"(.+?)\"/g);
+				var nodes = str.match(/".+?".+?pos=\"(.+?)\"/g);
+				for(var i in nodes) {
+					var name = nodes[i].match(/"(.+?)"/)[1].split('-');
+					var pos = nodes[i].match(/pos=\"(.+?)\"/)[1].split(',');
+					var ip = name[0];
+					var bridge = name[1];
+					if(!dot.nodes[ip])
+						dot.nodes[ip] = {};
+					dot.nodes[ip][bridge] = { x: pos[0], y: parseInt(pos[1])};
+				}
+				dot.width = coord[2];
+				dot.height = parseInt(coord[3]);
+				self(undefined, dot);
+			});
+		}, function(error, dot) {
+				var hosts = result.hosts;
+				var tunnels = result.tunnels;
+  			res.render('index', {
+				message: 'message', //JSON.parse(bridges)
+				hosts: hosts,
+				server: server,
+				dot: dot,
+				tunnels: tunnels
+			});
+		});
+	});
+
+}
+
+//Tunnel Manager
+var Tunman = function() {
+	this.tunnels = {}
+}
+Tunman.prototype.addWay = function(from, to, info) {
+	if(from == to) 
+		return false;
+	if(!this.tunnels[from]) {
+		this.tunnels[from] = {};
+	}
+	this.tunnels[from][to] = info;
+}
+Tunman.prototype.tun_exists = function(from, to) {
+	if(from == to) { 
+		return false;
+	}
+//	if(this.tunnels[from] && this.tunnels[to]) {
+		if(typeof(this.tunnels[from][to]) != 'undefined' && typeof(this.tunnels[to][from]) != 'undefined') {
+			if(this.tunnels[from][to].key == this.tunnels[to][from].key) {
+				//same key
+				return true;
+			}
+		}
+//	}
+	return false;
+}
+Tunman.prototype.getTunnels = function() {
+	var tunnels = {};
+	var cache = {};
+	for(var i in this.tunnels) {
+		for(var j in this.tunnels) {
+			if(this.tun_exists(i, j)) {
+				var hash = [i, j, this.tunnels[i][j].key].sort().toString();
+				if(!tunnels[hash]) {					
+					tunnels[hash] = [];
+				}
+				tunnels[hash].push({ip: i, br: this.tunnels[i][j].from, port: this.tunnels[i][j].port});
+			}
+		}
+	}
+	return tunnels;
+}

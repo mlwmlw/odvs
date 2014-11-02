@@ -1,0 +1,214 @@
+<script src="/js/raphael-min.js"></script>
+<script src="/js/js-yaml.js"></script>
+<script src="/js/vneditor.js"></script>
+<script>
+	var db = <?- JSON.stringify(brs) ?>
+	function setComDrag(enable) {
+		var bool;
+		if(enable > 0) {
+			bool = true;
+		}
+		else if(enable == 0){
+			bool = false;
+		}
+		else {
+			//revert
+			bool = -1;
+		}
+		for(var i in com) {	
+			com[i].setDrag(bool);
+		}
+	}
+	
+	function setComLink(enable) {
+		if(!enable) {
+			for(var i in com) {					
+				com[i][0].unclick(com[i].linker);
+				com[i].linker = null;
+			}
+			return false;
+		}
+		Raphael.VNE.linker(com);
+
+	}
+	function link_save() {
+		//add links
+		for(var i in connections) {
+			var repeat = false;
+			for(var j in db.links) {
+				if(db.links[j][0] == connections[i].from.info.id && db.links[j][1] == connections[i].to.info.id) {
+					repeat = true;
+				}
+				if(db.links[j][1] == connections[i].from.info.id && db.links[j][0] == connections[i].to.info.id) {
+					repeat = true;
+				}
+			}
+			if(!repeat) {
+		  	//console.log(connections[i].from.info.id, connections[i].to.info.id);
+		  	
+		  	$.ajax({
+		  		url: '/api/tunnel',
+		  		data: {'dp': [connections[i].from.info.id, connections[i].to.info.id]},
+		  		type: 'post',
+					dataType: 'json'
+		  	}).done(function() {
+		  		
+		  	});
+		  }
+		}
+		//remove link
+		/*$.ajax({
+	  		url: '/api/tunnel',
+	  		data: {'dp': [connections[i].from.info.id, connections[i].to.info.id]},
+	  		type: 'delete',
+				dataType: 'json'
+	  	}).done(function() {
+	  		
+	  	});
+	  */
+	}
+	//hide or show no line element
+	function toggleElement() {
+		toggleElement.toggle = toggleElement.toggle ? false: true;
+		
+		if(!toggleElement.toggle) {
+			for(var i in com) {
+				com[i].show();
+			}
+		}
+		else {
+			
+			for(var i in com) {
+				var check = false;
+				for(var j in connections) {
+					if(connections[j].from == com[i] || connections[j].to == com[i]) {
+						check = true;
+						break;
+					}
+				}
+				if(!check) {
+					com[i].hide();
+				}
+			}
+		}
+	}
+	//function setComLink(enable) {
+	$(document).ready(function() {
+		toggleElement();
+		
+		setComDrag(true);
+		$('.btn-group .btn:first').button('toggle');
+		$('.btn-group .btn').click(function() {	
+			setComDrag($(this).text() == 'move');
+			setComLink($(this).text() == 'line')
+		});
+		// Capture right click
+		$("#hero").rightClick( function(e) {
+			setComDrag(false);
+			setTimeout(function() {
+				$('#cominfo').modal('show');
+			}, 100);
+		});
+		// Disable context menu on an element
+		$("#hero").noContext();
+		
+		
+		
+		$('#cominfo').modal({
+		  keyboard: false,
+		  show: false
+		});
+		$('#cominfo').on('hidden', function () {
+			if($('.btn-group .btn.active').text() == 'move') {
+		  	setComDrag(true);
+		  }
+		});
+		
+		(function getEvents() {
+			$.ajax({
+	  		url: '/events',
+	  		type: 'get',
+				dataType: 'json',
+				timeout: 0
+	  	}).done(function(res) {
+	  		var html = '';
+	  		for(var i in res) {
+	  			html += '<tr><td>'+ res[i].event +'</td><td>'+ res[i].info +'</td><td>'+ res[i].at +'</td></tr>';
+	  		}
+	  		$('.event tbody').html(html);
+	  	
+	  		getEvents();
+	  	}).error(function() {
+	  		getEvents();
+	  	});
+	  })();
+	});
+	
+</script>
+<style>
+	#hero {
+		padding: 40px 60px;
+	}
+	.container {
+		width:1170px;
+	}
+</style>
+<div class="hero-unit" id="hero">
+
+</div>
+<div class="row" style="margin-top:-20px">
+	<div class="span2">
+		<div class="btn-group" data-toggle="buttons-radio">		  
+		  <button class="btn">move</button>		 
+		  <button class="btn">line</button>		  
+		</div>		
+	</div>
+	<div class="span2">
+		<button class="btn" onclick="toggleElement()">toggle</button>
+		<button class="btn" onclick="link_save()" disabled="disabled">save</button>
+	</div>
+</div>
+<div class="row">
+	<div class="span8">
+	<h2>Event</h2>
+	<table class="event table table-bordered">
+	  <thead>
+	    <tr>		    
+	    	<th>event</th>
+	      <th>info</th>
+	      <th>at</th>
+	    </tr>
+	  </thead>
+	  <tbody>
+	  	<? if(events.length) {?>
+	  		<? for(var i in events) { ?>
+	  		<tr>
+		  		<td><?=events[i].event ?></td>
+		  		<td><?=events[i].info ?></td>
+		  		<td><?=events[i].at ?></td>
+		  	</tr>
+		  	<? } ?>
+	  	<? } else {?>
+		  	<tr>
+		  		<td style="text-align:center" colspan="3">no event</td>
+		  	</tr>
+	  	<? } ?>
+	  	
+	  	
+	  </tbody>
+	</table>
+	</div>
+</div>
+<div class="modal hide" id="cominfo">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal">×</button>
+    <h3>Componet Info</h3>
+  </div>
+  <div class="modal-body">
+    <p>info</p>
+  </div>
+  <div class="modal-footer">
+    <a href="#" class="btn" data-dismiss="modal">Close</a>
+    <a href="#" class="btn btn-primary">Save changes</a>
+  </div>
+</div>
